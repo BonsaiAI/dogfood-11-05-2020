@@ -24,6 +24,7 @@ classdef BonsaiConfiguration < handle
         state_bus string
         action_bus string
         config_bus string
+        interface_json_file string
     end
 
     properties (Constant, Access = private)
@@ -52,6 +53,7 @@ classdef BonsaiConfiguration < handle
             obj.state_bus = '';
             obj.action_bus = '';
             obj.config_bus = '';
+            obj.interface_json_file = '';
         end
 
         % set properties from the environment, if present
@@ -113,23 +115,54 @@ classdef BonsaiConfiguration < handle
             if obj.inContainer()
                 enabled = false;
             end
-            
-            % TODO: Update CSV writer to work with structured data
-            if obj.usingBus()
-                enabled = false;
-            end
         end
 
         function n = numStates(obj)
-            n = length(obj.stateSchema);
+            if obj.usingStateBus
+                n = bonsai.Utilities.getNumValuesFromStruct(...
+                    Simulink.Bus.createMATLABStruct(obj.state_bus));
+            else
+                n = length(obj.stateSchema);
+            end
         end
 
         function n = numActions(obj)
-            n = length(obj.actionSchema);
+            if obj.usingActionBus
+                n = bonsai.Utilities.getNumValuesFromStruct(...
+                    Simulink.Bus.createMATLABStruct(obj.action_bus));
+            else
+                n = length(obj.actionSchema);
+            end
         end
 
         function n = numConfigs(obj)
-            n = length(obj.configSchema);
+            if obj.usingConfigBus
+                n = bonsai.Utilities.getNumValuesFromStruct(...
+                    Simulink.Bus.createMATLABStruct(obj.config_bus));
+            else
+                n = length(obj.configSchema);
+            end
+        end
+        
+        function tf = usingStateBus(obj)
+            tf = false;
+            if strlength(obj.state_bus) > 0
+                tf = true;
+            end
+        end
+        
+        function tf = usingActionBus(obj)
+            tf = false;
+            if strlength(obj.action_bus) > 0
+                tf = true;
+            end
+        end
+        
+        function tf = usingConfigBus(obj)
+            tf = false;
+            if strlength(obj.config_bus) > 0
+                tf = true;
+            end
         end
 
         function r = registrationJson(obj)
@@ -153,7 +186,7 @@ classdef BonsaiConfiguration < handle
             end
 
             if obj.usingBus()
-                % TODO: Figure out how to do this when using a bus
+                % TODO: Figure out how to do this when using buses
                 descriptionObject = struct();
             else
                 stateObject = generateDescription(obj.stateSchema, obj.numStates, obj.stateType);
@@ -167,13 +200,20 @@ classdef BonsaiConfiguration < handle
                 );
             end
 
-            registrationObject = struct( ...
-                'capabilities', struct(), ...
-                'name', obj.name, ...
-                'timeout', obj.timeout, ...
-                'description', descriptionObject, ...
-                'simulatorContext', obj.context ...
-            );
+            % Override registration if file is specified in config
+            if strlength(obj.interface_json_file) > 0
+                jsonStr = fileread(obj.interface_json_file);
+                registrationObject = jsondecode(jsonStr);
+                registrationObject.simulatorContext = obj.context;
+            else
+                registrationObject = struct( ...
+                    'capabilities', struct(), ...
+                    'name', obj.name, ...
+                    'timeout', obj.timeout, ...
+                    'description', descriptionObject, ...
+                    'simulatorContext', obj.context ...
+                );
+            end
 
             r = jsonencode(registrationObject);
         end
@@ -257,10 +297,10 @@ classdef BonsaiConfiguration < handle
         end
         
         function tf = usingBus(obj)
-            tf = false;
-            if strlength(obj.state_bus) > 0 || ...
-                strlength(obj.action_bus) > 0 || ...
-                strlength(obj.config_bus) > 0
+            tf = false;            
+            if obj.usingStateBus || ...
+                obj.usingActionBus || ...
+                obj.usingConfigBus
                 tf = true;
             end
         end

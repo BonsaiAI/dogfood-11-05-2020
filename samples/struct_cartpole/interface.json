@@ -1,0 +1,75 @@
+{
+    "name": "Simulink Cartpole",
+    "timeout": 60,
+    "description": {
+        "config": {
+            "category": "Struct",
+            "fields": [
+                {
+                    "name": "pos",
+                    "type": {
+                        "category": "Number",
+                        "defaultValue": 0
+                    }
+                }
+            ]
+        },
+        "action": {
+            "category": "Struct",
+            "fields": [
+                {
+                    "name": "command",
+                    "type": {
+                        "category": "Number",
+                        "values": [-10, 10]
+                    }
+                }
+            ]
+        },
+        "state": {
+            "category": "Struct",
+            "fields": [
+                {
+                    "name": "cart",
+                    "type": {
+                        "category": "Struct",
+                        "fields": [
+                            {
+                                "name": "position",
+                                "type": {
+                                    "category": "Number"
+                                }
+                            },
+                            {
+                                "name": "velocity",
+                                "type": {
+                                    "category": "Number"
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "pole",
+                    "type": {
+                        "category": "Struct",
+                        "fields": [
+                            {
+                                "name": "angle",
+                                "type": {
+                                    "category": "Number"
+                                }
+                            },
+                            {
+                                "name": "rotation",
+                                "type": {
+                                    "category": "Number"
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

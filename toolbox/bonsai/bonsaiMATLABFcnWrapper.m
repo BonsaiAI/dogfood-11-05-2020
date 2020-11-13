@@ -10,7 +10,25 @@ function [action, reset] = bonsaiMATLABFcnWrapper(state, halted)
     logger.verboseLog('bonsaiFcnWrapper')
     action = zeros(1, session.config.numActions);
     
-    %TODO: Handle assessment initialization
+    % Setup assessment, skip if model is in stopped state
+    simStatus = get_param(session.model, 'SimulationStatus');
+    if ~strcmp(simStatus, 'stopped')
+        % if not in a training session, start assessment
+        if ~session.isTrainingSession && strlength(session.sessionId) == 0
+            % start assessment session
+            logger.verboseLog('Starting a new assessment session...');
+            session.startNewSession();
+
+            % signal to user they should start assessment in the web
+            fig = uifigure;
+            message = 'Open the Bonsai Portal to begin assessment on your brain.';
+            uialert(fig, message, 'Simulator Registered', 'Icon', 'info', 'CloseFcn', @(h, e) close(fig));
+            uiwait(fig);
+
+            % begin assessment episode
+            session.startNewEpisode();
+        end
+    end
     
     % get next event (unless last event was EpisodeFinish or Unregister)
     if eq(session.lastEvent, bonsai.EventTypes.EpisodeFinish) || ...
@@ -24,7 +42,7 @@ function [action, reset] = bonsaiMATLABFcnWrapper(state, halted)
 
     % Determine action
     fields = fieldnames(session.lastAction);
-    if strlength(session.config.action_bus) > 0
+    if session.config.usingActionBus
         logger.verboseLog('Configuration indicated action bus is being used. Returning action struct.')
         if isequal(session.lastAction, struct())
             action = Simulink.Bus.createMATLABStruct(session.config.action_bus);

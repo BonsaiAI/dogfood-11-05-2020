@@ -1,5 +1,3 @@
-disp('structCartpoleTrain');
-
 mdl = 'struct_cartpole_discrete';
 load_system(mdl)
 set_param(mdl, 'FastRestart', 'on');
@@ -8,14 +6,12 @@ set_param(mdl, 'FastRestart', 'on');
 load('cartpoleBuses.mat')
 
 
-config = structCartpoleConfig
+config = bonsaiConfig
 BonsaiRunTraining(config, mdl, @episodeStartCallback);
-
-disp('end structCartpoleTrain');
 
 function episodeStartCallback(mdl, episodeConfig)
     disp('epStart Callback')
     in = Simulink.SimulationInput(mdl);
-    in = in.setVariable('initialPos', episodeConfig.pos);
+    in = in.setVariable('initialPos', episodeConfig);
     sim(in);
 end

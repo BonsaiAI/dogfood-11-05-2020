@@ -1,17 +1,17 @@
 % Copyright (c) Microsoft Corporation.
 % Licensed under the MIT License.
 
-function config = structCartpoleConfig
+function config = bonsaiConfig
 
     config = BonsaiConfiguration();
 
     % % override api url, defaults to "https://api.bons.ai"
     % config.url = "https://api.bons.ai";
 
-    % bonsai workspace
+    % bonsai workspace ID, see https://preview.bons.ai/accounts/settings
     config.workspace = "<your workspace here>";
 
-    % access key, generated from https://beta.bons.ai/brains/accounts/settings
+    % access key, generated from https://preview.bons.ai/accounts/settings
     config.accessKey = "<your access key here>";
 
     % simulator name, for an unmanaged simulator launched from the desktop to show up on the web
@@ -35,8 +35,11 @@ function config = structCartpoleConfig
     config.outputCSV = "cartpole-training.csv";
 
     % % display verbose logs
-    config.verbose = true;
+    % config.verbose = true;
 
     config.state_bus = 'SimState';
-    config.action_bus = '';
+    config.action_bus = 'Action';
+    config.config_bus = 'Config';
+    
+    config.interface_json_file = 'interface.json';
 end

@@ -30,15 +30,35 @@ classdef CSVWriter
             obj.fileHandle = fopen(foundFile,'w');
 
             % write headers to file
-            prefixedStates = arrayfun(@(x) strcat('state.', x), config.stateSchema);
-            prefixedActions = arrayfun(@(x) strcat('action.', x), config.actionSchema);
+            if config.usingStateBus
+                prefixedStates = bonsai.Utilities.getCSVHeadersFromStruct(...
+                    Simulink.Bus.createMATLABStruct(config.state_bus), ...
+                    'state');
+            else
+                prefixedStates = arrayfun(@(x) strcat('state.', x), config.stateSchema);
+            end
+
+            if config.usingActionBus
+                prefixedActions = bonsai.Utilities.getCSVHeadersFromStruct(...
+                    Simulink.Bus.createMATLABStruct(config.action_bus), ...
+                    'action');
+            else
+                prefixedActions = arrayfun(@(x) strcat('action.', x), config.actionSchema);
+            end
+
             stateHeaders = join(prefixedStates, ',');
             actionHeaders = join(prefixedActions, ',');
             allHeaders = strcat('Real Time (UTC),Sim Time,Event,', stateHeaders, ...
                 ',Halted,', actionHeaders);
 
             % add config headers to the end if there are configs
-            if obj.config.numConfigs > 0
+            if config.usingConfigBus
+                prefixedConfigs = bonsai.Utilities.getCSVHeadersFromStruct(...
+                    Simulink.Bus.createMATLABStruct(config.config_bus), ...
+                    'config');
+                configHeaders = join(prefixedConfigs, ',');
+                allHeaders = strcat(allHeaders, ',', configHeaders);
+            elseif obj.config.numConfigs > 0
                 prefixedConfigs = arrayfun(@(x) strcat('config.', x), config.configSchema);
                 configHeaders = join(prefixedConfigs, ',');
                 allHeaders = strcat(allHeaders, ',', configHeaders);
@@ -67,7 +87,7 @@ classdef CSVWriter
 
         end
 
-        function outString = stringifyStruct(obj, values, numValues, schema)
+        function outString = stringifyStruct(obj, values, numValues, schema, usingBus)
             outString = false;
 
             % input must be a struct
@@ -82,6 +102,9 @@ classdef CSVWriter
                 outString = join(blankStrings, ',');
 
             % else loop over values and convert + concatenate
+            elseif usingBus
+                csvValues = bonsai.Utilities.getCSVValuesFromStruct(values);
+                outString = join(string(csvValues), ',');
             else
                 for k=1:numValues
                     charVersion = '<empty>';
@@ -104,8 +127,20 @@ classdef CSVWriter
                 simTime = num2str(time);
             end
             realTime = char(datetime('now', 'TimeZone', 'UTC', 'Format', 'yyyy-MM-dd:hh:mm:ss'));
-            stateStr = obj.stringifyDoubles(state);
-            actionStr = obj.stringifyStruct(action, obj.config.numActions, obj.config.actionSchema);
+            
+            if isstruct(state)
+                values = bonsai.Utilities.getCSVValuesFromStruct(state);
+                stateStr = join(string(values), ',');
+            else
+                stateStr = obj.stringifyDoubles(state);
+            end
+            
+            % TODO: Handle for buses
+            if obj.config.usingActionBus
+                actionStr = obj.stringifyStruct(action, obj.config.numActions, obj.config.actionSchema, true);
+            else
+                actionStr = obj.stringifyStruct(action, obj.config.numActions, obj.config.actionSchema, false);
+            end
 
             haltedStr = 'false';
             if halted
@@ -116,8 +151,12 @@ classdef CSVWriter
                 ',', haltedStr, ',', actionStr);
 
             % add configs to the end if there are configs
+            if obj.config.usingConfigBus
+                configStr = obj.stringifyStruct(config, obj.config.numConfigs, obj.config.configSchema, true);
+                entry = strcat(entry, ',', configStr);
+            end
             if obj.config.numConfigs > 0
-                configStr = obj.stringifyStruct(config, obj.config.numConfigs, obj.config.configSchema);
+                configStr = obj.stringifyStruct(config, obj.config.numConfigs, obj.config.configSchema, false);
                 entry = strcat(entry, ',', configStr);
             end
 

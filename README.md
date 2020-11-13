@@ -60,6 +60,14 @@ Once you have the three scripts in place, you can configure your model using the
 4.	HALTED: this is a signal to the service that the sim has reached a completion of a loop, not driven by outcomes set during machine teaching, but rather those coming directly from the model.
 5.	RESET: this logic restarts the model from the initial configuration 
 
+###  Using the block in a custom Simulink Model
+1.  Drag the bonsai block from the Library Browser -> Bonsai into your Simulink Model.
+2. Disable the link between the bonsai block and the library. This is necessary due to the way the matlab function block is updated at runtime.
+	- Right click the block -> Library Links -> Disable Links.
+3. If using a non double type, the input/output DataTypes must be set in the model explorer
+	- Right click the block -> Explore -> Update the input/output DataTypes.
+4. If using structured data and/or arrays see the Advanced Usage section.
+
 ## Testing your Model
 
 Once you have configured the toolbox and the above into the block integrated with your model, run `bonsaiTrain` from the Matlab console. This will initiate a training session that you must "attach" to a brain. The name of the model will show up in 'Simulators' as "unmanaged".
@@ -146,6 +154,25 @@ Once you have successfully trained your AI and you have reached a point of goal 
 ## Cartpole Sample Model
 
 The cartpole sample in [samples/cartpole/](samples/cartpole/) contains model and code based on copyrighted example files from The MathWorks, Inc. and is licensed by the terms outlined in [samples/cartpole/XSLA.txt](samples/cartpole/XSLA.txt).
+
+
+## Advanced Usage
+
+This section covers some of the more advanced features of the bonsai toolbox.
+
+### Structured Data/Arrays
+A Simulink Bus Object must be used if using Structured Data or Arrays.
+- Required reading
+	- https://www.mathworks.com/help/simulink/slref/simulink.bus.html 
+	- https://www.mathworks.com/help/simulink/slref/buseditor.html 
+- Define your types in the buseditor
+	- To open the bus editor type buseditor in the MATLAB terminal
+- Add Buses to your Simulink Model
+- In the BonsaiConfiguration class, the buses variables must be set to the name of the buses in the MATLAB workspace. The following variables can be set depending on which buses are defined in the Simulink model.
+	- state_bus
+	- action_bus
+	- config_bus
+- For example see the sample in [samples/struct_cartpole/](samples/struct_cartpole/).
 
 ## Microsoft Open Source Code of Conduct
 

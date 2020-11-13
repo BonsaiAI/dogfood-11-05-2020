@@ -85,10 +85,10 @@ classdef Session < handle
                     
                     % Only set schema if it is empty and a bus is not being
                     % used
-                    if isempty(config.stateSchema) && strlength(config.state_bus) == 0
+                    if isempty(config.stateSchema) && ~config.usingStateBus
                         config.stateSchema = portData.stateSchema;
                     end
-                    if isempty(config.actionSchema) && strlength(config.action_bus) == 0
+                    if isempty(config.actionSchema) && ~config.usingActionBus
                         config.actionSchema = portData.actionSchema;
                     end
 
@@ -108,21 +108,29 @@ classdef Session < handle
             end
 
             % Configure bonsai block matlab function
-            % TODO: A try catch might be necessary here
-            if ~isempty(obj.config) && ~strcmp(obj.config.name, "TEST_NAME")
-                bonsaiFcnString = fileread('bonsaiMATLABFcn.m');
-                bonsaiStopFcnString = fileread('bonsaiMATLABStopFcnCallback.m');
-                if strlength(config.action_bus) > 0
-                    replacementString = strrep(bonsaiFcnString, 'REPLACE_WITH_INITIALIZED_ACTION_VAR', '');
-                else
-                    actionString = strrep('action = zeros(1, N);', 'N', string(config.numActions));
-                    replacementString = strrep(bonsaiFcnString, 'REPLACE_WITH_INITIALIZED_ACTION_VAR', actionString);
-                end
+            try
+                if ~isempty(obj.config) && ~strcmp(obj.config.name, "TEST_NAME")
+                    bonsaiFcnString = fileread('bonsaiMATLABFcn.m');
+                    bonsaiStopFcnString = fileread('bonsaiMATLABStopFcnCallback.m');
+                    if config.usingActionBus
+                        replacementString = strrep(bonsaiFcnString, 'REPLACE_WITH_INITIALIZED_ACTION_VAR', '');
+                    else
+                        actionString = strrep('action = zeros(1, N);', 'N', string(config.numActions));
+                        replacementString = strrep(bonsaiFcnString, 'REPLACE_WITH_INITIALIZED_ACTION_VAR', actionString);
+                    end
 
-                blkConfig = get_param(config.bonsaiBlock, 'MATLABFunctionConfiguration');
-                blkConfig.FunctionScript = replacementString;
-                set_param(config.bonsaiBlock, 'StopFcn', bonsaiStopFcnString)
-                save_system(mdl)
+                    blkConfig = get_param(config.bonsaiBlock, 'MATLABFunctionConfiguration');
+                    blkConfig.FunctionScript = replacementString;
+                    set_param(config.bonsaiBlock, 'StopFcn', bonsaiStopFcnString)
+                    save_system(mdl)
+                end
+            catch ME
+                if isequal(ME.identifier, 'Simulink:blocks:LockedMATLABFunction')
+                    fprintf('%s\n',...
+                        'Unable to modify MATLAB function because model is locked.',...
+                        'This may occur if you have already run training and are re-running. If so ignore this message.',...
+                        'If the program is not working correctly, disable fast restart/unlock the model and re-run training.');
+                end
             end
 
             % set session properties
@@ -174,7 +182,7 @@ classdef Session < handle
                 obj.logger.log('Requesting events until EpisodeStart received...');
                 
                 % If struct enabled create an empty struct from bus object
-                if strlength(obj.config.state_bus) > 0
+                if obj.config.usingStateBus
                     blank_state = Simulink.Bus.createMATLABStruct(obj.config.state_bus);
                 else
                     blank_state = zeros(1, obj.config.numStates);
@@ -231,7 +239,7 @@ classdef Session < handle
         function getNextEvent(obj, time, state, halted)
             % request next event
             obj.logger.verboseLog('getNextEvent')
-            if strlength(obj.config.state_bus) > 0
+            if obj.config.usingStateBus
                 simState = state;
             else
                 simState = containers.Map(obj.config.stateSchema, state);
