@@ -5,3 +5,4 @@
 **/*.slxc
 **/*.slx.autosave
 **/*.slx.original
+**/*.DS_Store
